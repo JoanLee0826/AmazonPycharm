@@ -105,7 +105,12 @@ class GoodDetail:
 
     conn = pymysql.connect(host='localhost', port=3306, db='amazon_test', user='root', passwd='1118')
     s = requests.Session()
-    s.headers.update({'User-Agent': random.choice(head_user_agent)})
+    row_headers = {
+        'User-Agent': random.choice(head_user_agent),
+        "Host": "www.amazon.com",
+        "Upgrade-Insecure-Requests": "1",
+    }
+    s.headers.update(row_headers)
     res_row = s.get(url=url_base)
     res_row_html = etree.HTML(res_row.text)
     title = res_row_html.xpath("//title/text()")[0]
@@ -128,7 +133,14 @@ class GoodDetail:
         captcha_row_url = "https://www.amazon.com/errors/validateCaptcha?"
         captcha_url = captcha_row_url + "&amzn=" + amzn_code + "&amzn-r=" + amzn_r_code + "&field-keywords=" + \
                       ocr_result
-        s.get(captcha_url)
+        ocr_headers = {
+            "Host": "www.amazon.com",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "same-origin",
+            "Sec-Fetch-User": "?1",
+            "Upgrade-Insecure-Requests": "1",
+        }
+        s.get(captcha_url, headers=ocr_headers)
     print("状态cookies：", s.cookies.items())
 
     def __init__(self):
@@ -170,6 +182,7 @@ class GoodDetail:
         print("状态cookies：", self.s.cookies.items())
         if str(res.status_code) != '200':
             print("页面错误，状态码为：", res.status_code)
+            print(res.text)
             try:
                 print(etree.HTML(res.text).xpath("//title/text()")[0])
             except:
@@ -460,13 +473,45 @@ class GoodDetail:
         except:
             seller_cls = None
 
-        seller_name, seller_months, selelr_review_count = None, None, None
+        seller_name, seller_months, seller_review_count = None, None, None
         if seller_cls == 'FBA' or 'FBM':
             try:
                 seller_href = res_html.xpath("//div[@id='merchant-info']/a[1]/@href")[0]
                 seller_url = "https://www.amazon.com" + seller_href
-                seller_name, seller_months, selelr_review_count = seller_check(seller_url)
+                seller_res = self.s.get(seller_url, timeout=20)
+                if seller_res.status_code != 200:
+                    print('{}卖家信息查询出错'.format(url))
+                    print(seller_res.text)
+                seller_res_html = etree.HTML(seller_res.text)
+
+                try:
+                    seller_name = seller_res_html.xpath("//h1[@id='sellerName']/text()")[0]
+                except:
+                    print("未解析到卖家名称")
+                    pass
+
+                try:
+                    seller_review_str = \
+                    seller_res_html.xpath("//a[@class='a-link-normal feedback-detail-description']/text()")[0]
+                    try:
+                        count_patt = re.compile('in the last (.*) months \((.*) ratings\)')
+                        a, b = re.search(count_patt, seller_review_str).groups()
+                        seller_months, seller_review_count = int(a), int(b)
+                    except:
+                        pass
+
+                    if not seller_review_count:
+                        try:
+                            another_patt = re.compile('(\d+) total ratings\)')
+                            seller_months = 0
+                            seller_review_count = int(re.search(another_patt, seller_review_str).group(1))
+                        except:
+                            print("新卖家年评论量解析出错")
+                except:
+                    print("卖家年评论数量解析出错")
+                    pass
             except:
+                print("未解析到卖家信息")
                 pass
         sales_est = None
         if category_main and rank_main:
@@ -486,9 +531,9 @@ class GoodDetail:
                 pass
 
         each_detail_list = (goods_pic_url,goods_title, ASIN, brand, ad_plus, goods_price, choose_kind,
-                            seller, seller_cls, seller_name, seller_months, selelr_review_count,
+                            seller, seller_cls, seller_name, seller_months, seller_review_count,
                             rank_in_hk, date_on_shelf, stockOnHand, goods_review_count,product_dimensions,
-                            package_dimensions,product_weight, ship_weight, goods_review_star, category_main,
+                            package_dimensions, product_weight, ship_weight, goods_review_star, category_main,
                             rank_main, sales_est, high_fre_words, multi_asin, goods_each_ranks)
 
         if goods_title:
@@ -553,46 +598,47 @@ def pic_save(base_code, ASIN):
 def seller_check(url):
     print("卖家年评论数获取中...")
     s = requests.Session()
+
     s.headers.update({'User-Agent': random.choice(head_user_agent)})
-    res = s.get(url, timeout=20)
-    if res.status_code != 200:
+    seller_res = s.get(url, timeout=20)
+    if seller_res.status_code != 200:
         print('{}卖家信息查询出错'.format(url))
         return None
-    res_html = etree.HTML(res.text)
+    seller_res_html = etree.HTML(seller_res.text)
 
-    seller_name, seller_months, seller_count = None, None, None
+    seller_name, seller_months, seller_review_count = None, None, None
     try:
-        seller_name = res_html.xpath("//h1[@id='sellerName']/text()")[0]
+        seller_name = seller_res_html.xpath("//h1[@id='sellerName']/text()")[0]
     except:
         pass
 
     try:
-        seller_review_str = res_html.xpath("//a[@class='a-link-normal feedback-detail-description']/text()")[0]
+        seller_review_str = seller_res_html.xpath("//a[@class='a-link-normal feedback-detail-description']/text()")[0]
     except:
         return
 
     try:
         count_patt = re.compile('in the last (.*) months \((.*) ratings\)')
         a, b = re.search(count_patt, seller_review_str).groups()
-        seller_months, seller_count = int(a), int(b)
+        seller_months, seller_review_count = int(a), int(b)
     except:
         pass
 
-    if not seller_count:
+    if not seller_review_count:
         try:
             another_patt = re.compile('(\d+) total ratings\)')
             seller_months = 0
-            seller_count = int(re.search(another_patt, seller_review_str).group(1))
+            seller_review_count = int(re.search(another_patt, seller_review_str).group(1))
         except:
             pass
 
-    return seller_name, seller_months, seller_count
+    return seller_name, seller_months, seller_review_count
 
 
 if __name__ == '__main__':
 
     goods_detail = GoodDetail()
-    data_file = r"../data/goods_rank_list/wind chimes_11261118_with_ad.csv"
+    data_file = r"C:\Users\Administrator\Desktop\手套除臭.xlsx"
 
     if data_file.endswith('csv'):
         data = pd.read_csv(data_file)
@@ -601,6 +647,7 @@ if __name__ == '__main__':
                 print(url)
                 goods_detail.get_detail(url)
                 time.sleep(random.random())
+
     if data_file.endswith('xlsx'):
         data = pd.read_excel(data_file, encoding='utf-8')
         for ASIN in data['ASIN']:
@@ -613,7 +660,7 @@ if __name__ == '__main__':
     details_pd = pd.DataFrame(goods_detail.detail_list,
                               columns=['goods_pic_url', 'goods_title', 'ASIN', 'brand', 'ad_plus', 'goods_price',
                                        'choose_kind', 'seller', 'seller_cls', 'seller_name', 'seller_months',
-                                       'selelr_review_count', 'rank_in_HK', 'date_on_shelf', 'stockOnHand',
+                                       'seller_review_count', 'rank_in_HK', 'date_on_shelf', 'stockOnHand',
                                        'goods_review_count', 'product_dimensions', 'package_dimensions',
                                        'product_weight', 'ship_weight', 'goods_review_star', 'category_main',
                                        'rank_main', 'sales_est', 'high_fre_words','multi_asin', 'goods_each_ranks'])

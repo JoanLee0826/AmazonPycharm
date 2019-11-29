@@ -15,7 +15,13 @@ client = AipOcr(APP_ID, API_KEY, SECRET_KEY)
 class AmazonGoods:
     headers = {
         # "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36 Edge/18.17763"
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:67.0) Gecko/20100101 Firefox/67.0"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:67.0) Gecko/20100101 Firefox/67.0",
+        "Host": "www.amazon.com",
+        # "Sec-Fetch-Mode": "navigate",
+        # "Sec-Fetch-Site": "same-origin",
+        # "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
+        # "Referer": "https://www.amazon.com"
     }
     proxies = {
         # "http": "http://49.86.181.43:9999",
@@ -31,6 +37,7 @@ class AmazonGoods:
     title = res_row_html.xpath("//title/text()")[0]
     print(title)
     if title == 'Robot Check':
+        print(res_row.text)
         img_src = res_row_html.xpath("//div[@class='a-row a-text-center']/img/@src")[0]
         print("验证码图片链接：", img_src)
         amzn_code = res_row_html.xpath("//input[@name='amzn']")[0].get('value')
@@ -48,7 +55,19 @@ class AmazonGoods:
         captcha_row_url = "https://www.amazon.com/errors/validateCaptcha?"
         captcha_url = captcha_row_url + "&amzn=" + amzn_code + "&amzn-r=" + amzn_r_code + "&field-keywords=" + \
                       ocr_result
-        s.get(captcha_url)
+        print("headers:", s.headers)
+        print(captcha_url)
+        ocr_headers = {
+            # "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36 Edge/18.17763"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:67.0) Gecko/20100101 Firefox/67.0",
+            "Host": "www.amazon.com",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "same-origin",
+            "Sec-Fetch-User": "?1",
+            "Upgrade-Insecure-Requests": "1",
+            "Referer": "https://www.amazon.com"
+        }
+        s.get(captcha_url, headers=ocr_headers)
     print("状态cookies：", s.cookies.items())
 
     def __init__(self):
@@ -135,7 +154,7 @@ if __name__ == '__main__':
 
     data_path = r'..\data\\'
     goods = AmazonGoods()
-    key_words = "wind chimes"
+    key_words = "coller backpack"
     for page in range(1, 3):
         if page == 1:
             url = "https://www.amazon.com/s?k=" + urllib.parse.quote(key_words)

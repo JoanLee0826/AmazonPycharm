@@ -17,7 +17,7 @@ domain = '1'  # 亚马逊的市场 美国为1
 chrome_opt = webdriver.ChromeOptions()
 prefs = {"profile.managed_default_content_settings.images": 2}  # 关闭图片，响应更快
 chrome_opt.add_experimental_option("prefs", prefs)
-driver = webdriver.Chrome(executable_path=r'E:\爬虫pycharm\others\chromedriver.exe', chrome_options=chrome_opt)
+driver = webdriver.Chrome(executable_path=r'..\others\chromedriver.exe', chrome_options=chrome_opt)
 # chrome_opt.add_argument('--headless')
 driver.get('https://www.amazon.com')
 time.sleep(random.uniform(1, 2))
@@ -101,25 +101,26 @@ cate_info_ca = {
 
 def get_selection(
         category=1055398,
-        rank_in=3000,
-        rank_out=30000,
+        rank_in=5000,
+        rank_out=10000,
         review_count=60,
         date_in='2019-1-1',
-        date_out='2019-9-15',
+        date_out='2019-11-15',
     ):
     queryJson = {
         "current_SALES_gte": rank_in,  # 最高排名
         "current_SALES_lte":  rank_out,  # 最底排名
         # "current_COUNT_REVIEWS_gte": 0,  # 最低评价数量
-        "current_COUNT_REVIEWS_lte": review_count,  # 最高评价数量
+        # "current_COUNT_REVIEWS_lte": review_count,  # 最高评价数量
         "current_NEW_FBA_gte": 2000,  # FBA发货价格 最低20刀
-        "current_NEW_FBA_lte": 5000,
+        "current_NEW_FBA_lte": 8000,
         "avg30_NEW_FBA_gte": 2000,  # 30天平均最低发货价格20刀
-        "avg30_NEW_FBA_lte": 5000,
+        "avg30_NEW_FBA_lte": 8000,
         "trackingSince_gte": get_keepa_time(date_in),  # 跟踪时间不早于
         "trackingSince_lte": get_keepa_time(date_out),  # 跟踪时间不晚于
-        # "rootCategory": category,  # 跟类目节点
-        "categories_include": [2972638011, 3375251, 2619533011],
+        "rootCategory": category,  # 跟类目节点
+        # "categories_include": [2972638011, 3375251, 2619533011],   # 包括的类目
+        # "categories_exclude": [],  # 不包含的类目
         "packageLength_gte": 1,
         "packageLength_lte": 450,
         "packageWidth_gte": 1,
@@ -131,21 +132,20 @@ def get_selection(
         "sort": [["current_SALES", "asc"]],
         # "lastOffersUpdate_gte": 4631500,  # int(time.time()/60-21564000)
         # "lastRatingUpdate_gte": 4615660,
-        "productType": [1, 5],   # 0 所有产品， 1, 可下载非第三方价格数据 5，仅父ASIN
-        "perPage": 50,  # 每一页展示的数据  默认50 返回总数据最大10000
+        "productType": [0, 1, 5],   # 0 所有产品， 1, 可下载非第三方价格数据 5，仅父ASIN
+        "perPage": 10000,  # 每一页展示的数据  默认50 返回总数据最大10000
         "page": 0  # 第几页 开始于0
     }
     return queryJson
 
 
-
-def get_asin(cate_key='Patio, Lawn & Garden',
-             rank_in=3000,
-             rank_out=20000,
-             domain=1):  # [1:com, 5:co.jp]
+def get_asin(cate_key='Home & Kitchen',
+             rank_in=0,
+             rank_out=5000,
+             domain=6):  # [1:com, 5:co.jp, 6:ca]
 
     url = "https://api.keepa.com/query?key=" + KEEPA_KEY + "&domain=" + str(domain) + '&selection=' + \
-          urllib.parse.quote(json.dumps(get_selection(category=cate_info_com[cate_key],
+          urllib.parse.quote(json.dumps(get_selection(category=cate_info_ca[cate_key],
                                                       rank_in=rank_in,
                                                       rank_out=rank_out)))
     s = requests.Session()
@@ -156,7 +156,7 @@ def get_asin(cate_key='Patio, Lawn & Garden',
     print(url)
     rep_data = s.get(url, verify=False)
     print(rep_data.text)
-    file_name = "data/asin_list_" + str(domain) + "_" + datetime.datetime.now().strftime('%m%d%H%M') + '_' + cate_key + '_' + \
+    file_name = r"data/asin_list_" + str(domain) + "_" + datetime.datetime.now().strftime('%m%d%H%M') + '_' + cate_key + '_' + \
                 str(rank_in) + '_' + str(rank_out) + '.xlsx'
     data_pd = pd.DataFrame(rep_data.json()['asinList'], columns=['ASIN'])
     data_pd.to_excel(file_name, encoding='utf-8')

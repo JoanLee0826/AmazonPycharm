@@ -14,7 +14,12 @@ class BSR:
     info_list = []
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
-        (KHTML, like Gecko) Chrome/69.0.3497.81 Safari/537.36"
+        (KHTML, like Gecko) Chrome/69.0.3497.81 Safari/537.36",
+        "Host": "www.amazon.com",
+        # "Sec-Fetch-Mode": "navigate",
+        # "Sec-Fetch-Site": "same-origin",
+        # "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
     }
 
     proxies = {
@@ -45,7 +50,17 @@ class BSR:
         captcha_row_url = "https://www.amazon.com/errors/validateCaptcha?"
         captcha_url = captcha_row_url + "&amzn=" + amzn_code + "&amzn-r=" + amzn_r_code + "&field-keywords=" + \
                       ocr_result
-        s.get(captcha_url)
+        ocr_headers = {
+            # "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36 Edge/18.17763"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:67.0) Gecko/20100101 Firefox/67.0",
+            "Host": "www.amazon.com",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "same-origin",
+            "Sec-Fetch-User": "?1",
+            "Upgrade-Insecure-Requests": "1",
+            "Referer": "https://www.amazon.com"
+        }
+        s.get(captcha_url, headers=ocr_headers)
 
     def parse(self, url):
         res = self.s.get(url=url)
@@ -116,7 +131,7 @@ class BSR:
 if __name__ == '__main__':
 
     bsr = BSR()
-    url = 'https://www.amazon.com/Best-Sellers-Sports-Outdoors-Camping-Blankets/zgbs/sporting-goods/14332921/'
+    url = 'https://www.amazon.com/gp/bestsellers/sporting-goods/10208170011/'
     # url = 'https://www.amazon.com/Best-Sellers-Sports-Outdoors-Camping-Sleeping-Bags/zgbs/sporting-goods/2204498011/'
     # url = 'https://www.amazon.com/Best-Sellers-Sports-Outdoors-Camping-Pillows/zgbs/sporting-goods/3401681/'
     bsr.run(url)
