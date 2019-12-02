@@ -152,11 +152,19 @@ class GoodDetail:
     def get_detail(self, url):
         import re
         if re.search('slredirect', url):
+            ad_headers = {
+                "Host": "www.amazon.com",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "none",
+                "Sec-Fetch-User": "?1",
+                "Upgrade-Insecure-Requests": "1",
+            }
             ad_plus = 1
+            res = self.s.get(url, headers=ad_headers, timeout=20)
         else:
             ad_plus = 0
+            res = self.s.get(url, timeout=20)
         print(self.s.headers)
-        res = self.s.get(url, timeout=20)
         res_row_html = etree.HTML(res.text)
         title = res_row_html.xpath("//title/text()")[0]
         print(title)
@@ -180,7 +188,11 @@ class GoodDetail:
                           ocr_result
             self.s.get(captcha_url)
         print("状态cookies：", self.s.cookies.items())
-        if str(res.status_code) != '200':
+        if res.status_code == 302:
+            real_url = res.headers.get('location', '')
+            print("跳转到真实链接：", real_url)
+            self.get_detail(url=real_url)
+        if res.status_code != 200:
             print("页面错误，状态码为：", res.status_code)
             print(res.text)
             try:
@@ -207,7 +219,7 @@ class GoodDetail:
             if self.begin >= 5:
                 print('该链接:' + url + '访问出错次数超过5次, 请手动尝试添加')
                 return
-            self.get_detail(url)
+            self.get_detail(url=url)
 
         self.begin = 0
         # 类别
@@ -638,11 +650,11 @@ def seller_check(url):
 if __name__ == '__main__':
 
     goods_detail = GoodDetail()
-    data_file = r"C:\Users\Administrator\Desktop\手套除臭.xlsx"
+    data_file = r"../data/goods_rank_list/privacy bed tent_12021716_with_ad.csv"
 
     if data_file.endswith('csv'):
         data = pd.read_csv(data_file)
-        for url in data['goods_url_full']:
+        for url in data['goods_url_full'][49:60]:
             if url:
                 print(url)
                 goods_detail.get_detail(url)

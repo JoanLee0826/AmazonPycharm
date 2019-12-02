@@ -154,7 +154,7 @@ if __name__ == '__main__':
 
     data_path = r'..\data\\'
     goods = AmazonGoods()
-    key_words = "coller backpack"
+    key_words = "privacy bed tent"
     for page in range(1, 3):
         if page == 1:
             url = "https://www.amazon.com/s?k=" + urllib.parse.quote(key_words)
