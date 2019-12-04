@@ -1,10 +1,10 @@
-import numpy as np
 import pandas as pd
-import requests, lxml
+import requests
 from lxml import etree
 import re, time, random, datetime
 import pymysql
 import os
+import urllib
 from aip import AipOcr
 
 APP_ID = '11240997'
@@ -112,6 +112,13 @@ class GoodDetail:
     }
     s.headers.update(row_headers)
     res_row = s.get(url=url_base)
+    s.headers.update({
+        "Host": "www.amazon.com",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
+    })
     res_row_html = etree.HTML(res_row.text)
     title = res_row_html.xpath("//title/text()")[0]
     print(title)
@@ -148,25 +155,40 @@ class GoodDetail:
         self.rank_list = []
         self.sec_list = []
         self.begin = 0
+        self.begin_503 = 0
+        self.error_list = []
 
     def get_detail(self, url):
         import re
         if re.search('slredirect', url):
+            ad_plus = 1
             ad_headers = {
+                "User-Agent": random.choice(head_user_agent),
                 "Host": "www.amazon.com",
                 "Sec-Fetch-Mode": "navigate",
                 "Sec-Fetch-Site": "none",
-                "Sec-Fetch-User": "?1",
+                "Sec-Fetch-User": "?1",   # 是否通过键盘鼠标操作操作发出请求
                 "Upgrade-Insecure-Requests": "1",
             }
-            ad_plus = 1
+            try:
+                url = "https://www.amazon.com" + urllib.parse.unquote(url.split('url=')[1].split("ref")[0])
+            except:
+                pass
+            print(url)
             res = self.s.get(url, headers=ad_headers, timeout=20)
         else:
             ad_plus = 0
+            try:
+                url = url.split('/ref')[0]
+            except:
+                pass
+            print(url)
             res = self.s.get(url, timeout=20)
         print(self.s.headers)
+        print(res.headers)
         res_row_html = etree.HTML(res.text)
         title = res_row_html.xpath("//title/text()")[0]
+        print(res.status_code)
         print(title)
         if title == 'Robot Check':
             img_src = res_row_html.xpath("//div[@class='a-row a-text-center']/img/@src")[0]
@@ -187,11 +209,32 @@ class GoodDetail:
             captcha_url = captcha_row_url + "&amzn=" + amzn_code + "&amzn-r=" + amzn_r_code + "&field-keywords=" + \
                           ocr_result
             self.s.get(captcha_url)
-        print("状态cookies：", self.s.cookies.items())
+            print("状态cookies：", self.s.cookies.items())
+
         if res.status_code == 302:
             real_url = res.headers.get('location', '')
             print("跳转到真实链接：", real_url)
             self.get_detail(url=real_url)
+
+        if res.status_code == 503:
+            if url not in self.error_list:
+                self.error_list.append(url)
+            time.sleep(random.uniform(2, 5))
+            print("try again because 503")
+            self.begin_503 += 1
+            if self.begin_503 >= 3:
+                print('该链接{}因503跳转访问出错次数超过3次, 请手动尝试添加'.format(url))
+                return
+            headers_503 = {
+                "User-Agent": random.choice(head_user_agent),
+                "Host": "www.amazon.com",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "same-origin",
+                "Sec-Fetch-User": "?1",
+                "Upgrade-Insecure-Requests": "1",
+            }
+            self.s.headers.update(headers_503)
+            self.get_detail(url=url)
         if res.status_code != 200:
             print("页面错误，状态码为：", res.status_code)
             print(res.text)
@@ -213,11 +256,11 @@ class GoodDetail:
             goods_title = None
 
         if not goods_title:
-            time.sleep(random.uniform(2,5))
+            time.sleep(random.uniform(2, 5))
             print("try again")
             self.begin += 1
-            if self.begin >= 5:
-                print('该链接:' + url + '访问出错次数超过5次, 请手动尝试添加')
+            if self.begin >= 3:
+                print('该链接{}访问出错次数超过3次, 请手动尝试添加'.format(url),"可能是不可解析的广告链接")
                 return
             self.get_detail(url=url)
 
@@ -317,7 +360,6 @@ class GoodDetail:
                     value = value.replace("\n", '').replace("\t", '').strip()
                     if key != "Customer Reviews":
                         item[key] = value
-
 
         if res_html.xpath("//table[@id='productDetails_techSpec_section_1']"):
             print("model-4")
@@ -650,13 +692,13 @@ def seller_check(url):
 if __name__ == '__main__':
 
     goods_detail = GoodDetail()
-    data_file = r"../data/goods_rank_list/privacy bed tent_12021716_with_ad.csv"
+    data_file = r"../data/goods_rank_list/duvet cover set_12031757_with_ad.csv"
 
     if data_file.endswith('csv'):
         data = pd.read_csv(data_file)
-        for url in data['goods_url_full'][49:60]:
+        for url in data['goods_url_full'][113:]:
             if url:
-                print(url)
+                # print(url)
                 goods_detail.get_detail(url)
                 time.sleep(random.random())
 
@@ -669,7 +711,21 @@ if __name__ == '__main__':
                 goods_detail.get_detail(url)
                 time.sleep(random.random())
 
-    details_pd = pd.DataFrame(goods_detail.detail_list,
+    another_list = None
+    print("error_list:", goods_detail.error_list)
+    if goods_detail.error_list:
+        another_detail = GoodDetail()
+        for each in goods_detail.error_list:
+            print(each)
+            another_detail.get_detail(each)
+        another_list = another_detail.detail_list
+
+    if another_list:
+        last_info_list = goods_detail.detail_list.extend(another_list)
+    else:
+        last_info_list = goods_detail.detail_list
+
+    details_pd = pd.DataFrame(last_info_list,
                               columns=['goods_pic_url', 'goods_title', 'ASIN', 'brand', 'ad_plus', 'goods_price',
                                        'choose_kind', 'seller', 'seller_cls', 'seller_name', 'seller_months',
                                        'seller_review_count', 'rank_in_HK', 'date_on_shelf', 'stockOnHand',
