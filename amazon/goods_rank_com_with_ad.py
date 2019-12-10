@@ -5,6 +5,7 @@ from lxml import etree
 import re, time, random, datetime
 import urllib
 from aip import AipOcr
+import os
 
 APP_ID = '11240997'
 API_KEY = '6ZU9O51SKfbaZyg0vzAUWXqN'
@@ -82,9 +83,6 @@ class AmazonGoods:
             return
         print(url)
         res_html = res.text
-        # with open(r'测试.html', 'w') as f:
-        #     f.write(res_html)
-        # print(res_html.title())
         html = etree.HTML(res_html)
 
         # 自然排名和广告排名
@@ -150,12 +148,10 @@ class AmazonGoods:
             print(len(self.goods_list))
 
 
-if __name__ == '__main__':
+def main(key_words, end_page=2):
 
-    data_path = r'..\data\\'
     goods = AmazonGoods()
-    key_words = "duvet cover set"
-    for page in range(1, 4):
+    for page in range(1, end_page+1):
         if page == 1:
             url = "https://www.amazon.com/s?k=" + urllib.parse.quote(key_words)
             goods.get_goods(url)
@@ -165,9 +161,23 @@ if __name__ == '__main__':
             goods.get_goods(url)
             time.sleep(random.uniform(1.2, 2.4))
         time.sleep(random.random())
-    goods_pd = pd.DataFrame(goods.goods_list, columns=['goods_title', 'goods_url_full', 'price_whole', 'price_fraction', 'ad_plus', 'reviews'])
+    goods_pd = pd.DataFrame(goods.goods_list,
+                            columns=['goods_title', 'goods_url_full', 'price_whole', 'price_fraction', 'ad_plus',
+                                     'reviews'])
     aft = datetime.datetime.now().strftime('%m%d%H%M')
     # file_name = data_path + "goods_rank_list/" + key_words + "_" + aft + "_with_ad.xlsx"
     # goods_pd.to_excel(file_name, encoding='utf-8', engine='xlsxwriter')
-    file_name = data_path + "goods_rank_list/" + key_words + "_" + aft + "_with_ad.csv"
+    abs_path = os.path.abspath('../')
+    data_path = abs_path + "/data/goods_rank_list/"
+    if not os.path.exists(data_path):
+        os.makedirs(data_path)
+    file_name = data_path + key_words + "_" + aft + "_with_ad.csv"
     goods_pd.to_csv(file_name, encoding='utf-8')
+
+
+if __name__ == '__main__':
+    """
+    返回指定关键词(key_words)下的前几页(end_page)数据链接
+    """
+    key_words = 'new year decorations 2020'
+    main(key_words, end_page=2)

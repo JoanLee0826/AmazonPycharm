@@ -3,12 +3,8 @@ import requests
 from lxml import etree
 import re, time
 from aip import AipOcr
-
-APP_ID = '11240997'
-API_KEY = '6ZU9O51SKfbaZyg0vzAUWXqN'
-SECRET_KEY = 'xtCepeZVrdZ6LSHBDf0xNhYq7PEdY8No '
-client = AipOcr(APP_ID, API_KEY, SECRET_KEY)
-url = 'https://www.amazon.com'
+import random
+import os
 
 class BSR:
     info_list = []
@@ -22,16 +18,17 @@ class BSR:
         "Upgrade-Insecure-Requests": "1",
     }
 
-    proxies = {
-        "http": "http://49.86.181.43:9999",
-    }
+    # proxies = {
+    #     "http": "http://49.86.181.43:9999",
+    # }
 
     url_base = "https://www.amazon.com"
     s = requests.Session()
     s.headers.update(headers)
-    res = s.get(url=url_base, headers=headers, proxies=proxies)
+    res = s.get(url=url_base, headers=headers)
     res_row_html = etree.HTML(res.text)
     title = res_row_html.xpath("//title/text()")
+    print(title)
     if title == 'Robot Check':
         img_src = res_row_html.xpath("//div[@class='a-row a-text-center']/img/@src")[0]
         print("验证码图片链接：", img_src)
@@ -51,7 +48,6 @@ class BSR:
         captcha_url = captcha_row_url + "&amzn=" + amzn_code + "&amzn-r=" + amzn_r_code + "&field-keywords=" + \
                       ocr_result
         ocr_headers = {
-            # "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36 Edge/18.17763"
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:67.0) Gecko/20100101 Firefox/67.0",
             "Host": "www.amazon.com",
             "Sec-Fetch-Mode": "navigate",
@@ -64,9 +60,7 @@ class BSR:
 
     def parse(self, url):
         res = self.s.get(url=url)
-        print(res.content.title())
         if res.status_code != 200:
-            print(res.content.title())
             print('解析出错')
             return
         res_html = etree.HTML(res.text)
@@ -87,21 +81,21 @@ class BSR:
                 goods_url = None
 
             try:
-                ASIN = re.search('dp/(.*)/', goods_url).group().split("/")[1]
+                asin = re.search('dp/(.*)/', goods_url).group().split("/")[1]
 
             except:
-                ASIN = None
-                print("商品排名{}处: ASIN解析出错/该商品已下线".format(rank_in))
+                asin = None
+                print("商品排名{}处: asin解析出错/该商品已下线".format(rank_in))
             try:
                 goods_review_str = each.xpath(".//a[@class='a-size-small a-link-normal']/text()")[0]
                 goods_review_count = int(goods_review_str.replace(',', ''))
             except:
                 goods_review_count = 0
-            self.info_list.append((category, rank_in, ASIN, goods_url, goods_review_count))
+            self.info_list.append((category, rank_in, asin, goods_url, goods_review_count))
             #     # pic_url = each.xpath(".//div[@class='a-section a-spacing-small']/img/@src")[0]
             #
             #     # res_pic = s.get(pic_url, headers=headers, proxies=proxies, verify=False)
-            #     # file_name = r'E:\爬虫pycharm\data\pic\\' + ASIN + '.png'
+            #     # file_name = r'E:\爬虫pycharm\data\pic\\' + asin + '.png'
             #     with open(file_name, "wb") as f:
             #         f.write(res_pic.content)
             #         time.sleep(random.random())
@@ -112,26 +106,33 @@ class BSR:
         url_2 = url + '?pg=2'
         print(url)
         self.parse(url=url)
-        time.sleep(3)
+        time.sleep(random.uniform(2, 3))
         print(url_2)
         self.parse(url=url_2)
-        time.sleep(3)
+        time.sleep(random.uniform(2, 3))
         aft = time.strftime("_%m%d_%H%M", time.localtime())
-        col = ['category', 'rank_in', 'ASIN', 'goods_url', 'goods_review_count']
+        col = ['category', 'rank_in', 'asin', 'goods_url', 'goods_review_count']
         data_pd = pd.DataFrame(self.info_list, columns=col)
-        file_path = r'..\data\category\\'
+
+        # 文件保存路径判断
+        abs_path = os.path.abspath('../')
+        data_path = abs_path + "/data/category/"
+        if not os.path.exists(data_path):
+            os.makedirs(data_path)
         try:
             category = data_pd['category'][0]
         except:
             category = ''
         print('{}类目下的{}条数据收集完毕'.format(category, len(data_pd)))
-        data_pd.to_excel(file_path + category + aft + '.xlsx', encoding='utf-8', engine='xlsxwriter')
+        data_pd.to_excel(data_path + category + aft + '.xlsx', encoding='utf-8', engine='xlsxwriter')
 
 
 if __name__ == '__main__':
 
     bsr = BSR()
-    url = 'https://www.amazon.com/gp/bestsellers/sporting-goods/10208170011/'
-    # url = 'https://www.amazon.com/Best-Sellers-Sports-Outdoors-Camping-Sleeping-Bags/zgbs/sporting-goods/2204498011/'
-    # url = 'https://www.amazon.com/Best-Sellers-Sports-Outdoors-Camping-Pillows/zgbs/sporting-goods/3401681/'
+    # 输入一个类目的链接 得到了类目产品列表
+    url = 'https://www.amazon.com/gp/bestsellers/home-garden/3744511'
+    # 链接中的ref信息用来表示跳转信息，存在状态保持 最好滤除
+    if re.search('ref', url):
+        url = url.split('ref')[0]
     bsr.run(url)

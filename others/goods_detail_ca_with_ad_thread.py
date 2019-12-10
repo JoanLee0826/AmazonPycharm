@@ -12,7 +12,6 @@ API_KEY = '6ZU9O51SKfbaZyg0vzAUWXqN'
 SECRET_KEY = 'xtCepeZVrdZ6LSHBDf0xNhYq7PEdY8No '
 client = AipOcr(APP_ID, API_KEY, SECRET_KEY)
 
-
 class GoodDetail:
     head_user_agent = [
         'Mozilla/5.0 (Windows NT 6.3; WOW64; Trident/7.0; rv:11.0) like Gecko',
@@ -35,17 +34,7 @@ class GoodDetail:
         'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; WOW64; Trident/6.0; BIDUBrowser 2.x)',
         'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.11 (KHTML, like Gecko) Chrome/20.0.1132.11 TaoBrowser/3.0 Safari/536.11']
 
-    # headers = {
-    #     # "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.81 Safari/537.36"
-    #     "User-Agent": random.choice(head_user_agent)
-    # }
-
-    # proxies = {
-    #     "http": "http://114.217.241.20:8118",
-    #     "https:": "https://157.245.88.191:8080"
-    # }
-
-    url_base = "https://www.amazon.com"
+    url_base = "https://www.amazon.ca"
 
     s = requests.Session()
     s.headers.update({'User-Agent': random.choice(head_user_agent)})
@@ -68,41 +57,12 @@ class GoodDetail:
             ocr_result = ocr_json.get('words_result')[0].get('words')
             print('机器人检测OCR结果为', ocr_result)
         else:
-            ocr_result = input("请输入验证码：")
+            ocr_result = input("输入验证码：")
             print('机器人检测OCR结果为', ocr_result)
-        captcha_row_url = "https://www.amazon.com/errors/validateCaptcha?"
+        captcha_row_url = "https://www.amazon.ca/errors/validateCaptcha?"
         captcha_url = captcha_row_url + "&amzn=" + amzn_code + "&amzn-r=" + amzn_r_code + "&field-keywords=" + \
                       ocr_result
         s.get(captcha_url)
-
-    delivery_data = {
-        'locationType': 'LOCATION_INPUT',
-        'zipCode': '90014',
-        'storeContext': 'generic',
-        'deviceType': 'web',
-        'pageType': 'Gateway',
-        'actionSource': 'glow'
-    }
-    delivery_header = {
-        'Host': 'www.amazon.com',
-        'Connection': 'keep-alive',
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-Site": "none",
-        "Sec-Fetch-User": "?1",
-        # 'Content-Length': '112',
-        'Accept': 'text/html,*/*',
-        'Origin': 'https://www.amazon.com',
-        'X-Requested-With': 'XMLHttpRequest',
-        # 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) '
-        #               'Chrome/69.0.3497.100 Safari/537.36',
-        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-        'Referer': 'https://www.amazon.com/',
-        # 'Accept-Encoding': 'gzip, deflate, br',
-        'Accept-Language': 'zh-CN,zh;q=0.9',
-    }
-    change_delivery = 'https://www.amazon.com/gp/delivery/ajax/address-change.html'
-    deliver_res = s.post(change_delivery, headers=delivery_header, data=delivery_data)
-    print("地址更换结果：", deliver_res)
     print(s.headers.get('User-Agent'))
 
     def __init__(self):
@@ -116,18 +76,19 @@ class GoodDetail:
 
     def get_detail(self, url):
         import re
+
         if re.search('slredirect', url):
             ad_plus = 1
             ad_headers = {
                 "User-Agent": random.choice(self.head_user_agent),
-                "Host": "www.amazon.com",
+                "Host": "www.amazon.ca",
                 "Sec-Fetch-Mode": "navigate",
                 "Sec-Fetch-Site": "none",
-                "Sec-Fetch-User": "?1",   # 是否通过键盘鼠标操作操作发出请求
+                "Sec-Fetch-User": "?1",  # 是否通过键盘鼠标操作操作发出请求
                 "Upgrade-Insecure-Requests": "1",
             }
             try:
-                url = "https://www.amazon.com" + urllib.parse.unquote(url.split('url=')[1].split("ref")[0])
+                url = "https://www.amazon.ca" + urllib.parse.unquote(url.split('url=')[1].split("ref")[0])
             except:
                 pass
             print(url)
@@ -139,16 +100,19 @@ class GoodDetail:
             except:
                 pass
             print(url)
-            self.s.headers.update({'User-Agent': random.choice(self.head_user_agent)})
-            res = self.s.get(url, verify=False)
+            res = self.s.get(url, timeout=20)
 
+        print(self.s.headers)
+        print(res.headers)
         res_row_html = etree.HTML(res.text)
         title = res_row_html.xpath("//title/text()")[0]
+        print(res.status_code)
         print(title)
+        # 请求过程中的机器人识别
         if title == 'Robot Check':
             img_src = res_row_html.xpath("//div[@class='a-row a-text-center']/img/@src")[0]
-            res_pic = self.s.get(img_src).content
             print("验证码图片链接：", img_src)
+            res_pic = self.s.get(img_src).content
             amzn_code = res_row_html.xpath("//input[@name='amzn']")[0].get('value')
             amzn_r_code = res_row_html.xpath("//input[@name='amzn-r']")[0].get('value')
             ocr_options = {}
@@ -161,26 +125,52 @@ class GoodDetail:
                 ocr_result = ocr_json.get('words_result')[0].get('words')
                 print('机器人检测OCR结果为', ocr_result)
             else:
-                ocr_result = input("请输入验证码：")
+                ocr_result = input("输入验证码：")
                 print('机器人检测OCR结果为', ocr_result)
+
             captcha_row_url = "https://www.amazon.com/errors/validateCaptcha?"
             captcha_url = captcha_row_url + "&amzn=" + amzn_code + "&amzn-r=" + amzn_r_code + "&field-keywords=" + \
                           ocr_result
             self.s.get(captcha_url)
+            print("状态cookies：", self.s.cookies.items())
+        if res.status_code == 404 and re.search('Page Not Found', title):
+            try:
+                asin_patt = re.compile("dp/(.*)/")
+                asin = re.search(asin_patt, url).groups()[0]
+                self.each_detail_list = ['page not found', 'no title', asin]
+                self.detail_list.append(self.each_detail_list)
+                print("未在加拿大站发现该商品".format(asin))
+                return
+            except:
+                try:
+                    self.each_detail_list = ['page not found', 'no title', url.split("/"[-1])]
+                    self.detail_list.append(self.each_detail_list)
+                    print("未在加拿大站发现该商品".format(url))
+                    return
+                except:
+                    self.each_detail_list = ['page not found', 'no title', url]
+                    self.detail_list.append(self.each_detail_list)
+                    return
+        #  如果是广告链接，且未能正确跳转 返回302的再次尝试
+        if res.status_code == 302:
+            real_url = res.headers.get('location', '')
+            print("跳转到真实链接：", real_url)
+            self.get_detail(url=real_url)
 
+        #  返回503， 调整请求头 更换UA后再次尝试
         if res.status_code == 503:
 
             time.sleep(random.uniform(2, 5))
             print("try again because 503")
             self.begin_503 += 1
-
             if self.begin_503 >= 3:
                 print('该链接{}因503跳转访问出错次数超过3次, 请手动尝试添加'.format(url))
-                self.error_set.add(url)
+                if url not in self.error_set:
+                    self.error_set.add(url)
                 return
             headers_503 = {
                 "User-Agent": random.choice(self.head_user_agent),
-                "Host": "www.amazon.com",
+                "Host": "www.amazon.ca",
                 "Sec-Fetch-Mode": "navigate",
                 "Sec-Fetch-Site": "same-origin",
                 "Sec-Fetch-User": "?1",
@@ -188,12 +178,13 @@ class GoodDetail:
             }
             self.s.headers.update(headers_503)
             self.get_detail(url=url)
-
         if res.status_code != 200:
             print("页面错误，状态码为：", res.status_code)
-            print(res.text)
+            # print(res.text)
             try:
                 print(etree.HTML(res.text).xpath("//title/text()")[0])
+                # self.each_detail_list = ['page not found', 'no title', url]
+                # self.detail_list.append(self.each_detail_list)
             except:
                 pass
             return
@@ -209,25 +200,20 @@ class GoodDetail:
         except:
             goods_title = None
 
+        if not goods_title:
+            time.sleep(random.uniform(2, 5))
+            print("try again")
+            self.begin += 1
+            if self.begin >= 3:
+                print('该链接{}访问出错次数超过3次, 请手动尝试添加'.format(url), "可能是不可解析的广告链接")
+                self.error_set.add(url)
+                return
+            self.get_detail(url=url)
+
         self.begin = 0
-        self.begin_503 = 0
-        # 类别
-        kinds = res_html.xpath("//div[@class='twisterTextDiv text']/span[@class='a-size-base' and 1]/text()")[:]
-
-        # sort_list = []
-        if not kinds:
-            kinds = res_html.xpath('//div[@class="a-section a-spacing-none twisterShelf_displaySection"]/span/text()')[
-                    :]
-
         # 不同类别、颜色、款式的编号
-        # sorts_codes = res_html.xpath('//*[starts-with(@id, "size_name")]/@data-defaultasin')[:]
-        # color_sorts = res_html.xpath('//*[starts-with(@id, "color_name")]/@data-defaultasin')[:]
-        # style_sorts = res_html.xpath('//*[starts-with(@id, "style_name")]/@data-defaultasin')[:]
-        # sort_list = sorts_codes + color_sorts + style_sorts
-
+        # 仅仅能获取到部分可以直接点击得到的ASIN, 如果需要完整的父子ASIN数据可使用 keepa API
         try:
-            # 这种方式不能获取所有的子asin 只能获取某个颜色、尺寸、款式下的默认asin
-            # 要获取所有的asin 请调用Keepa
             sorts_codes = res_html.xpath('//*[starts-with(@id, "size_name")]/@data-defaultasin')[:]
             color_sorts = res_html.xpath('//*[starts-with(@id, "color_name")]/@data-defaultasin')[:]
             style_sorts = res_html.xpath('//*[starts-with(@id, "style_name")]/@data-defaultasin')[:]
@@ -253,15 +239,6 @@ class GoodDetail:
         except:
             sort_list = []
 
-        try:
-            choosen_kinds = res_html.xpath('//div[starts-with(@id, "variation")]/div/span/text()')
-            if choosen_kinds:
-                choose_kind = choosen_kinds[0].strip()
-            else:
-                choose_kind = res_html.xpath('//span[@class="shelf-label-variant-name"]/text()')[0].strip()
-        except:
-            choose_kind = "Just One Kind"
-
         item = {}
         if res_html.xpath('//div[@id="detail-bullets"]//div[@class="content"]/ul/li'):
             print("model-0")
@@ -280,15 +257,41 @@ class GoodDetail:
             goods_rank = res_html.xpath('string(//li[@id="SalesRank"])')
             item['raw_goods_rank'] = goods_rank
 
+        if res_html.xpath('//*[@id="productDetailsTable"]//div[@class="content"]/ul/li'):
+            print("加拿大站-model-0")
+            for each in res_html.xpath('//*[@id="productDetailsTable"]//div[@class="content"]/ul/li'):
+                li = each.xpath('string(.)')
+                li = li.replace('\n', '').replace('\t', '')
+                try:
+                    key = li.split(":")[0].strip()
+                    value = li.split(":")[1].strip()
+                except:
+                    key = 'miss key'
+                    value = 'miss value'
+                import re
+                if not (re.search('rank', key.lower()) or re.search('review', key.lower())):
+                    item[key] = value
+            goods_rank = res_html.xpath('string(//li[@id="SalesRank"])')
+            item['raw_goods_rank'] = goods_rank
+
+        if res_html.xpath("//div[@class='pdTab']"):
+            print('加拿大站-model-1')
+            for each in res_html.xpath("//div[@class='pdTab']//tr"):
+                key = each.xpath("string(.//td[@class='label'])")
+                # print(key, "---")
+                value = each.xpath("string(.//td[@class='value'])")
+                if key and value:
+                    key = key.replace("\n", '').replace("\t", '').strip()
+                    value = value.replace("\n", '').replace("\t", '').strip()
+                    if key != "Customer Reviews":
+                        item[key] = value
         if res_html.xpath("//div[@id='detailBullets_feature_div']/ul"):
             absr = res_html.xpath('string(//div[@id="dpx-amazon-sales-rank_feature_div"]/li)')
             item['Amazon Best Sellers Rank'] = absr
             print("model-1")
             for each in res_html.xpath('//div[@id="detailBullets_feature_div"]/ul/li'):
                 key = each.xpath('.//span/span[1]/text()')
-                # print(key)
                 value = each.xpath('.//span/span[2]/text()')
-                # print(value)
                 if key and value:
                     key = key[0].replace("\n", '').replace("\t", '').strip(": (")
                     value = value[0].replace("\n", '').replace("\t", '').strip(": (")
@@ -300,9 +303,7 @@ class GoodDetail:
             print("model-2")
             for each in res_html.xpath("//div[@class='a-section table-padding']/table//tr"):
                 key = each.xpath("string(.//th)")
-                # print(key, "---")
                 value = each.xpath("string(.//td)")
-                #     print(key, value)
                 if key and value:
                     key = key.replace("\n", '').replace("\t", '').strip()
                     value = value.replace("\n", '').replace("\t", '').strip()
@@ -312,11 +313,8 @@ class GoodDetail:
         if res_html.xpath("//table[@id='productDetails_detailBullets_sections1']"):
             print("model-3")
             for each in res_html.xpath("//table[@id='productDetails_detailBullets_sections1']//tr"):
-                # print("model1--in")
                 key = each.xpath("string(./th)")
-                # print(key, "---")
                 value = each.xpath("string(./td)")
-                # print(key, value)
                 if key and value:
                     key = key.replace("\n", '').replace("\t", '').strip()
                     value = value.replace("\n", '').replace("\t", '').strip()
@@ -327,9 +325,7 @@ class GoodDetail:
             print("model-4")
             for each in res_html.xpath("//table[@id='productDetails_techSpec_section_1']//tr"):
                 key = each.xpath("string(.//th)")
-                # print(key, "---")
                 value = each.xpath("string(.//td)")
-                # print(key, value)
                 if key and value:
                     key = key.replace("\n", '').replace("\t", '').strip()
                     value = value.replace("\n", '').replace("\t", '').strip()
@@ -339,11 +335,8 @@ class GoodDetail:
         if res_html.xpath("//div[@class='wrapper USlocale']"):
             print("model-5")
             for each in res_html.xpath("////div[@class='wrapper USlocale']//tr"):
-                # print("model3--in")
                 key = each.xpath("string(.//td[@class='label'])")
-                # print(key, "---")
                 value = each.xpath("string(.//td[@class='value'])")
-                # print(key, "---", value)
                 if key and value:
                     key = key.replace("\n", '').replace("\t", '').strip()
                     value = value.replace("\n", '').replace("\t", '').strip()
@@ -364,7 +357,6 @@ class GoodDetail:
         except:
             pass
         multi_asin = list(set(sort_list))
-
         print("-----------")
         print(multi_asin)
         print("-----------")
@@ -372,12 +364,8 @@ class GoodDetail:
         package_dimensions = item.get('Package Dimensions', None)
         product_weight = item.get('Item Weight', None)
         date_on_shelf = item.get('Date first listed on Amazon', None)
-
-        if product_weight:
-            product_weight = weight_handle(product_weight)
-        ship_weight = item.get('Shipping Weight', None)
-        if ship_weight:
-            ship_weight = weight_handle(ship_weight)
+        if not date_on_shelf:
+            date_on_shelf = item.get('date_on_shelf', None)
 
         feature_list = res_html.xpath("//div[@id='feature-bullets']/ul/li/span/text()")
         features = []
@@ -385,7 +373,6 @@ class GoodDetail:
             feature = feature.strip()
             features.append(feature)
 
-        rank_in_HK = None
         goods_ranks = item.get('raw_goods_rank', None)
         goods_each_ranks = goods_ranks
         print(goods_ranks)
@@ -419,11 +406,6 @@ class GoodDetail:
                     pass
                 goods_rank_sort = re.sub(weight_str, '', goods_rank_sort)
                 goods_each_ranks[goods_rank_sort.strip()] = goods_rank_num
-                if re.search('Home & Kitchen', goods_rank_sort):
-                    try:
-                        rank_in_HK = int(goods_rank_num)
-                    except:
-                        rank_in_HK = None
 
             self.rank_list.append(goods_each_ranks)
             print(self.rank_list[-1])
@@ -433,7 +415,7 @@ class GoodDetail:
                 rank_main = int(list(self.rank_list[-1].values())[0])
             except:
                 category_main, rank_main = None, None
-            print(category_main, rank_main)
+            # print(category_main, rank_main)
         # 评价数量
         try:
             goods_review_count = \
@@ -451,40 +433,26 @@ class GoodDetail:
         except:
             goods_review_star = None
 
-        # 高频评价
-        fre_words = res_html.xpath('//*[@id="cr-lighthut-1-"]/div/span/a/span/text()')[:]
-        high_fre_words = [each.strip() for each in fre_words if each]
-
         try:
             goods_price = res_html.xpath("//span[starts-with(@id,'priceblock')]/text()")[0]
         except:
             goods_price = None
 
-        import json
         try:
             brand = res_html.xpath('//a[@id="bylineInfo"]/text()')[0]
         except:
             brand = None
-        try:
-            buy_box_info = res_html.xpath('//*[@id="turboState"]/script/text()')[0]
-            buy_box_json = json.loads(buy_box_info)
-            stockOnHand = buy_box_json['eligibility']['stockOnHand']
-        except:
-            stockOnHand = None
 
         # 卖方
         try:
             seller = res_html.xpath('string(//div[@id="merchant-info"])')
+            seller = seller.replace("\n", "").split("Reviews")[0].strip()
             if not seller:
                 try:
                     seller = res_html.xpath('string(//span[@id="merchant-info"])')
+                    seller = seller.replace("\n", "").split("Reviews")[0].strip()
                 except:
                     seller = None
-            if re.search('Reviews', seller):
-                seller = seller.replace("\n", "").split("Reviews")[0].strip()
-            if re.search(r"P.when", seller):
-                seller = seller.replace("\n", "").split("P.when")[0].strip()
-            seller = seller.replace("\n", "").strip()
         except:
             seller = None
 
@@ -493,33 +461,11 @@ class GoodDetail:
         except:
             seller_cls = None
 
-        sales_est = None
-
-        # 销量修正，实际反馈发现，销量预测头部偏高，中部偏低，做出微调
-        if category_main and rank_main:
-            try:
-                sales_est = int(get_sales(cate=category_main, rank=rank_main))
-                # if sales_est >= 2000:
-                #     sales_est = int(sales_est * 1)
-                # elif sales_est >= 1000:
-                #     sales_est = int(sales_est * 1.15)
-                # elif sales_est >= 500:
-                #     sales_est = int(sales_est * 1)
-                # else:
-                #     sales_est = int(sales_est * 0.75)
-                # time.sleep(random.random())
-                # print("sales:", sales_est)
-            except:
-                pass
-
-        each_detail_list = (
-            goods_pic_url, goods_title, asin, brand, ad_plus, goods_price, choose_kind, seller, seller_cls, sales_est,
-            rank_in_HK, date_on_shelf, stockOnHand, goods_review_count, product_dimensions, package_dimensions,
-            product_weight, ship_weight, goods_review_star, category_main, rank_main, high_fre_words, multi_asin,
-            goods_each_ranks)
-
-        if goods_title:
-            self.detail_list.append(each_detail_list)
+        each_detail_list = (goods_pic_url, goods_title, asin, brand, ad_plus, goods_price, seller, seller_cls,
+                            date_on_shelf, goods_review_count, product_dimensions, package_dimensions,
+                            product_weight, goods_review_star, category_main, rank_main, goods_each_ranks)
+        # if goods_title:
+        self.detail_list.append(each_detail_list)
 
     def run(self, data_path, start=0, end=None):
 
@@ -527,7 +473,7 @@ class GoodDetail:
             data = pd.read_excel(data_path, encoding='utf-8')
             for asin in data['asin'][start: end]:
                 if asin:
-                    url = "https://www.amazon.com/dp/" + str(asin)
+                    url = "https://www.amazon.ca/dp/" + str(asin)
                     self.url_queue.put(url)
                     print(self.url_queue.qsize())
         if data_path.endswith('csv'):
@@ -548,7 +494,7 @@ class GoodDetail:
                     try:
                         time.sleep(random.random())
                         each.start()
-                        print(each.name)
+                        print("线程：", each.name)
                     except Exception as e:
                         print(e)
 
@@ -561,11 +507,11 @@ class GoodDetail:
                 break
 
         details_pd = pd.DataFrame(goods_detail.detail_list,
-                                  columns=['goods_pic_url', 'goods_title', 'asin', 'brand', 'ad_plus', 'goods_price',
-                                             'choose_kind', 'seller', 'seller_cls','sales_est','rank_in_HK', 'date_on_shelf',
-                                           'stockOnHand', 'goods_review_count', 'product_dimensions', 'package_dimensions',
-                                           'product_weight', 'ship_weight', 'goods_review_star', 'category_main', 'rank_main'
-                                           , 'high_fre_words', 'multi_asin','goods_each_ranks'])
+                                  columns=["goods_pic_url", "goods_title", "asin", "brand", "ad_plus", "goods_price",
+                                           "seller", "seller_cls", "date_on_shelf", "goods_review_count",
+                                           "product_dimensions", "package_dimensions", "product_weight",
+                                           "goods_review_star", "category_main", "rank_main", "goods_each_ranks"]
+                                  )
 
         aft = datetime.datetime.now().strftime('%m%d%H%M')
 
@@ -596,10 +542,9 @@ class GoodDetail:
         try:
             details_pd['pic_url'] = abs_path + r"\data\pic\\" + details_pd['asin'] + ".jpg"
             details_pd['pic_table_url'] = '<table> <img src=' + '\"' + details_pd['pic_url'] + '\"' + 'height="140" >'
+        # details_pd.sort_values(by=['sales_est'], inplace=True, ascending=False)
         except:
             pass
-        details_pd.sort_values(by=['sales_est'], inplace=True, ascending=False)
-
         # details_pd.drop_duplicates(subset=['category_main', 'rank_main'], inplace=True)
         details_pd.to_excel(file_name, encoding='utf-8')
         if self.error_set:
@@ -647,25 +592,6 @@ def seller_handle(seller):
         else:
             return 'FBM'
 
-
-def get_sales(rank, cate="Home & Kitchen"):
-    import requests
-    import urllib
-    s = requests.Session()
-    row_headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36",
-    }
-    sales_url = "https://amzscout.net/extensions/scoutlite/v1/sales?"
-    full_url = sales_url + "domain=COM&category=" + urllib.parse.quote(cate) + "&rank=" + str(rank)
-    print(full_url)
-    s.headers.update(row_headers)
-    res = s.get(full_url, timeout=10)
-    try:
-        return res.json().get('sales')
-    except:
-        return None
-
-
 def pic_save(base_code, asin):
 
     import base64
@@ -680,4 +606,4 @@ if __name__ == '__main__':
 
     goods_detail = GoodDetail()
     data_path = r"E:\AmazonPycharm\keepa\data\asin_list_1_12101351_Home & Kitchen_0_5000.xlsx"
-    goods_detail.run(data_path, start=9000, end=9050)
+    goods_detail.run(data_path, start=2600, end=2800)

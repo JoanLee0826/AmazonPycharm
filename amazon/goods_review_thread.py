@@ -5,7 +5,8 @@ from lxml import etree
 import re, time, random, datetime
 from queue import Queue
 import threading
-import  sys
+import sys
+
 
 class Review:
 
@@ -19,13 +20,14 @@ class Review:
     }
 
     def __init__(self, domain):
-        self.view_list = []
+        self.review_list = []
         self.page_list = []
+        self.error_set = set()
         self.url_queue = Queue()
 
         if domain.strip().lower() == 'jp':
             self.row_url = "https://www.amazon.co.jp"
-        else:
+        if domain.strip().lower() == 'com':
             self.row_url = "https://www.amazon.com"
 
         self.s = requests.Session()
@@ -33,9 +35,15 @@ class Review:
         self.s.get(url=self.row_url, headers=self.headers, proxies=self.proxies)
 
     def get_review(self, url):
-        res = self.s.get(url, headers=self.headers, proxies=self.proxies)
+        try:
+            res = self.s.get(url, headers=self.headers, proxies=self.proxies, timeout=20)
+        except requests.exceptions.Timeout:
+            print('请求超时，确定网络通畅后继续')
+            self.error_set.add(url)
+            print("{}请求失败，已加入二次请求队列")
+            return
         if res.status_code != 200:
-            print("{}请求出错，状态码为:{}".format(url,res.status_code))
+            print("{}请求出错，状态码为:{}".format(url, res.status_code))
             print(res.text)
             return
 
@@ -71,12 +79,21 @@ class Review:
                 view_useful_raw = each_view.xpath('.//span[@data-hook="helpful-vote-statement"]/text()')[0]
                 view_useful = view_useful_raw.split(' ')[0]
             except:
-                view_useful = '0'
+                view_useful = 0
+
+            if re.search('One', view_useful):
+                view_useful = 1
+            else:
+                try:
+                    view_useful = int(view_useful)
+                except:
+                    pass
+
             # 商品的评价信息表
-            each_view_list = [view_goods, view_name, view_star, view_title, view_date, view_colour, view_size,
+            each_review_list = [view_goods, view_name, view_star, view_title, view_date, view_colour, view_size,
                               view_body, view_useful]
-            self.view_list.append(each_view_list)
-        # print(self.view_list[-1])
+            print(each_review_list)
+            self.review_list.append(each_review_list)
 
     def run(self, data):
         goods_data = pd.read_excel(data, encoding='utf-8')
@@ -107,7 +124,7 @@ class Review:
                                   for m in range(30) if not self.url_queue.empty()]
                 for each in review_threads:
                     each.start()
-                print("队列剩余数量",self.url_queue.qsize())
+                print("队列剩余数量", self.url_queue.qsize())
 
                 for each in review_threads:
                     each.join()
@@ -119,7 +136,11 @@ class Review:
             if self.url_queue.empty():
                 break
 
-        view_goods_pd = pd.DataFrame(self.view_list,
+        if self.error_set:
+            for each in self.error_set:
+                self.get_review(each)
+
+        view_goods_pd = pd.DataFrame(self.review_list,
                                      columns=['review_goods', 'review_name', 'review_star', 'review_title',
                                               'review_date', 'review_colour', 'review_size', 'review_body',
                                               'review_useful'])
@@ -127,11 +148,13 @@ class Review:
         aft = datetime.datetime.now().strftime('%m%d%H%M')
         file_name = r'..\data\goods_review\\' + "reviews-" + aft + ".xlsx"
         view_goods_pd.to_excel(file_name, encoding='utf-8', engine='xlsxwriter')
-        print("共获取评论数量：", len(self.view_list))
+        print("共获取评论数量：", len(self.review_list))
 
 
 if __name__ == '__main__':
 
-    data = r"../data/category/Weighted Blankets_1111_1028.xlsx"
+    data = r"../data/category/Shoe Gaiters_1209_1027.xlsx"
+    # 获取指定Excel中 的ASIN列表的评论  可以结合 bse 榜单进行，获取类目的评论详情
+    # Excel 需要包含两列  ASIN 以及 goods_review_count
     review = Review(domain='com')
     review.run(data=data)

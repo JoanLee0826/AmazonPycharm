@@ -116,11 +116,11 @@ def get_selection(
         "current_NEW_FBA_lte": 8000,
         "avg30_NEW_FBA_gte": 2000,  # 30天平均最低发货价格20刀
         "avg30_NEW_FBA_lte": 8000,
-        "trackingSince_gte": get_keepa_time(date_in),  # 跟踪时间不早于
-        "trackingSince_lte": get_keepa_time(date_out),  # 跟踪时间不晚于
+        # "trackingSince_gte": get_keepa_time(date_in),  # 跟踪时间不早于
+        # "trackingSince_lte": get_keepa_time(date_out),  # 跟踪时间不晚于
         "rootCategory": category,  # 跟类目节点
         # "categories_include": [2972638011, 3375251, 2619533011],   # 包括的类目
-        # "categories_exclude": [],  # 不包含的类目
+        "categories_exclude": [284507],  # 不包含的类目
         "packageLength_gte": 1,
         "packageLength_lte": 450,
         "packageWidth_gte": 1,
@@ -142,10 +142,10 @@ def get_selection(
 def get_asin(cate_key='Home & Kitchen',
              rank_in=0,
              rank_out=5000,
-             domain=6):  # [1:com, 5:co.jp, 6:ca]
+             domain=1):  # [1:com, 5:co.jp, 6:ca]
 
     url = "https://api.keepa.com/query?key=" + KEEPA_KEY + "&domain=" + str(domain) + '&selection=' + \
-          urllib.parse.quote(json.dumps(get_selection(category=cate_info_ca[cate_key],
+          urllib.parse.quote(json.dumps(get_selection(category=cate_info_com[cate_key],
                                                       rank_in=rank_in,
                                                       rank_out=rank_out)))
     s = requests.Session()
@@ -315,6 +315,9 @@ def get_stock(asin):
 
 if __name__ == '__main__':
     # get_stock('B07RX8HVCK')
-    get_asin()
+    get_asin(cate_key='Home & Kitchen',
+             rank_in=0,
+             rank_out=5000,
+             domain=1)
 
 

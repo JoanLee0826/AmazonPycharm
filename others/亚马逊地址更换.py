@@ -51,8 +51,8 @@ delivery_header = {
     'Accept': 'text/html,*/*',
     'Origin': 'https://www.amazon.com',
     'X-Requested-With': 'XMLHttpRequest',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) '
-                  'Chrome/69.0.3497.100 Safari/537.36',
+    # 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) '
+    #               'Chrome/69.0.3497.100 Safari/537.36',
     'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
     'Referer': 'https://www.amazon.com/',
     # 'Accept-Encoding': 'gzip, deflate, br',

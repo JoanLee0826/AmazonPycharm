@@ -85,8 +85,12 @@ def check(file_path):
 
 
 if __name__ == '__main__':
-    file_path = '../data/goods_review/五个圆形狗窝的评价.xlsx'
-    # main(file_path)
+
+    # 评价词频分析 输入为 评价详情文件
+    file_path = '../data/goods_review/reviews-12091259.xlsx'
+    # main 用来绘制词频分布图
+    main(file_path)
+    # check 检查关键词所在的句段
     check(file_path)
 
 
