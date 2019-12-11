@@ -59,7 +59,7 @@ delivery_header = {
     'Accept-Language': 'zh-CN,zh;q=0.9',
 }
 res_row = s.get(row_url)
-print(res_row)
+print("地址更换结果：", res_row)
 
 time.sleep(2)
 res = s.post(change_delivery, headers=delivery_header, data=delivery_data)

@@ -240,7 +240,7 @@ class GoodDetail:
             sorts_color_url = res_html.xpath("//*[starts-with(@id, 'color_name')]/@data-dp-url")[:]
             sorts_size_url = res_html.xpath("//*[starts-with(@id, 'size_name')]/@data-dp-url")[:]
             sorts_style_url = res_html.xpath("//*[starts-with(@id, 'style_name')]/@data-dp-url")[:]
-            asin_patt = re.compile("dp/(.*)/")
+            asin_patt = re.compile("dp/([^/]*)/*")
             sort_url_raw = sorts_color_url + sorts_size_url + sorts_style_url
             print("sort_list_raw:", sort_list_raw)
             print("sort_url_raw:", sort_url_raw)

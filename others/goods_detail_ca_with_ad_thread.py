@@ -12,6 +12,7 @@ API_KEY = '6ZU9O51SKfbaZyg0vzAUWXqN'
 SECRET_KEY = 'xtCepeZVrdZ6LSHBDf0xNhYq7PEdY8No '
 client = AipOcr(APP_ID, API_KEY, SECRET_KEY)
 
+
 class GoodDetail:
     head_user_agent = [
         'Mozilla/5.0 (Windows NT 6.3; WOW64; Trident/7.0; rv:11.0) like Gecko',
@@ -63,6 +64,34 @@ class GoodDetail:
         captcha_url = captcha_row_url + "&amzn=" + amzn_code + "&amzn-r=" + amzn_r_code + "&field-keywords=" + \
                       ocr_result
         s.get(captcha_url)
+
+    change_delivery = 'https://www.amazon.ca/gp/delivery/ajax/address-change.html'
+    delivery_data = {
+        'locationType': 'LOCATION_INPUT',
+        'zipCode': 'E4C 6W4',
+        'storeContext': 'generic',
+        'deviceType': 'web',
+        'pageType': 'Gateway',
+        'actionSource': 'glow'
+    }
+    delivery_header = {
+        'Host': 'www.amazon.ca',
+        'Connection': 'keep-alive',
+        # 'Content-Length': '112',
+        'Accept': 'text/html,*/*',
+        'Origin': 'https://www.amazon.ca',
+        'X-Requested-With': 'XMLHttpRequest',
+        # 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) '
+        #               'Chrome/69.0.3497.100 Safari/537.36',
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+        'Referer': 'https://www.amazon.ca/',
+        # 'Accept-Encoding': 'gzip, deflate, br',
+        'Accept-Language': 'zh-CN,zh;q=0.9',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-Fetch-Mode': 'cors',
+
+    }
+    # res = s.post(change_delivery, headers=delivery_header, data=delivery_data)
     print(s.headers.get('User-Agent'))
 
     def __init__(self):
@@ -84,7 +113,7 @@ class GoodDetail:
                 "Host": "www.amazon.ca",
                 "Sec-Fetch-Mode": "navigate",
                 "Sec-Fetch-Site": "none",
-                "Sec-Fetch-User": "?1",  # 是否通过键盘鼠标操作操作发出请求
+                "Sec-Fetch-User": "?1",
                 "Upgrade-Insecure-Requests": "1",
             }
             try:
@@ -108,7 +137,7 @@ class GoodDetail:
         title = res_row_html.xpath("//title/text()")[0]
         print(res.status_code)
         print(title)
-        # 请求过程中的机器人识别
+
         if title == 'Robot Check':
             img_src = res_row_html.xpath("//div[@class='a-row a-text-center']/img/@src")[0]
             print("验证码图片链接：", img_src)
@@ -135,7 +164,7 @@ class GoodDetail:
             print("状态cookies：", self.s.cookies.items())
         if res.status_code == 404 and re.search('Page Not Found', title):
             try:
-                asin_patt = re.compile("dp/(.*)/")
+                asin_patt = re.compile("dp/([^/]*)/*")
                 asin = re.search(asin_patt, url).groups()[0]
                 self.each_detail_list = ['page not found', 'no title', asin]
                 self.detail_list.append(self.each_detail_list)
@@ -143,7 +172,7 @@ class GoodDetail:
                 return
             except:
                 try:
-                    self.each_detail_list = ['page not found', 'no title', url.split("/"[-1])]
+                    self.each_detail_list = ['page not found', 'no title', url.split("/")[-1]]
                     self.detail_list.append(self.each_detail_list)
                     print("未在加拿大站发现该商品".format(url))
                     return
@@ -351,6 +380,12 @@ class GoodDetail:
             goods_pic_url = None
 
         asin = item.get('ASIN', None)
+        if not asin:
+            try:
+                asin_patt = re.compile("dp/([^/]*)/*")
+                asin = re.search(asin_patt, url).groups()[0]
+            except:
+                pass
 
         try:
             sort_list.append(asin)
@@ -366,6 +401,8 @@ class GoodDetail:
         date_on_shelf = item.get('Date first listed on Amazon', None)
         if not date_on_shelf:
             date_on_shelf = item.get('date_on_shelf', None)
+            if not date_on_shelf:
+                date_on_shelf = item.get('Date First Available', None)
 
         feature_list = res_html.xpath("//div[@id='feature-bullets']/ul/li/span/text()")
         features = []
@@ -380,6 +417,8 @@ class GoodDetail:
             goods_ranks = item.get('Best Sellers Rank', None)
             if not goods_ranks:
                 goods_ranks = item.get('Amazon Best Sellers Rank', None)
+                if not goods_ranks :
+                    goods_ranks = item.get('Amazon Bestsellers Rank')
 
         category_main = None
         rank_main = None
@@ -496,8 +535,10 @@ class GoodDetail:
                         each.start()
                         print("线程：", each.name)
                     except Exception as e:
+                        time.sleep(random.random(2,3))
+                        each.start()
+                        print(each, "重试中")
                         print(e)
-
                 for each in thread_list:
                     each.join()
 
@@ -585,12 +626,13 @@ def seller_handle(seller):
     if not seller:
         return None
     else:
-        if re.search('sold by Amazon.com', seller, re.I):
+        if re.search('Ships from and sold by Amazon', seller, re.I):
             return 'AMZ'
         elif re.search('Fulfilled by Amazon', seller, re.I):
             return 'FBA'
         else:
             return 'FBM'
+
 
 def pic_save(base_code, asin):
 
@@ -605,5 +647,5 @@ def pic_save(base_code, asin):
 if __name__ == '__main__':
 
     goods_detail = GoodDetail()
-    data_path = r"E:\AmazonPycharm\keepa\data\asin_list_1_12101351_Home & Kitchen_0_5000.xlsx"
-    goods_detail.run(data_path, start=2600, end=2800)
+    data_path = r"E:\AmazonPycharm\others\data\drop_image_home_10000_sort.xlsx"
+    goods_detail.run(data_path, start=3300, end=3350)

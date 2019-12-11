@@ -343,7 +343,7 @@ class GoodDetail:
             sort_url_raw = sorts_color_url + sorts_size_url + sorts_style_url
             print("sort_list_raw:", sort_list_raw)
             print("sort_url_raw:", sort_url_raw)
-            asin_patt = re.compile("dp/(.*)/")
+            asin_patt = re.compile("dp/([^/]*)/*")
             sort_url_list = [re.search(asin_patt, each).groups()[0] for each in sort_url_raw if each]
             sort_url_list = list(set(sort_url_list))
             if '' in sort_url_list:
