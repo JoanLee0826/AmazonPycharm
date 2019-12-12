@@ -17,8 +17,8 @@ df = pd.DataFrame()
 for each in os.listdir(data_path):
     file = data_path + "/" + each
     df = pd.concat([df, pd.read_excel(file)])
-
 df.drop(columns=['Image'], inplace=True)
 df.drop_duplicates(subset=['Sales Rank: 30 days avg.', 'Categories: Tree'], inplace=True)
 df.to_excel(r'E:\AmazonPycharm\others\data\30天平均前5000hk不含dining\all_drop.xlsx')
 print(df)
+

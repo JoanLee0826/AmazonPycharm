@@ -1,5 +1,5 @@
 import pandas as pd
-import requests, lxml
+import requests
 from lxml import etree
 import re, time, random, datetime
 import threading, queue
@@ -48,7 +48,28 @@ class GoodDetail:
     url_base = "https://www.amazon.com"
 
     s = requests.Session()
-    s.headers.update({'User-Agent': random.choice(head_user_agent)})
+    row_headers = {
+        'User-Agent': random.choice(head_user_agent),
+        "Host": "www.amazon.com",
+        "Upgrade-Insecure-Requests": "1",
+    }
+    ocr_headers = {
+        "Host": "www.amazon.com",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
+    }
+    pic_headers = {
+        "Host": "images-na.ssl-images-amazon.com",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8"
+    }
+    s.headers.update(row_headers)
     res = s.get(url=url_base, timeout=20)
     res_row_html = etree.HTML(res.text)
     title = res_row_html.xpath("//title/text()")[0]
@@ -148,7 +169,7 @@ class GoodDetail:
         if title == 'Robot Check':
             img_src = res_row_html.xpath("//div[@class='a-row a-text-center']/img/@src")[0]
             res_pic = self.s.get(img_src).content
-            print("验证码图片链接：", img_src)
+            # print("验证码图片链接：", img_src)
             amzn_code = res_row_html.xpath("//input[@name='amzn']")[0].get('value')
             amzn_r_code = res_row_html.xpath("//input[@name='amzn-r']")[0].get('value')
             ocr_options = {}
@@ -158,11 +179,13 @@ class GoodDetail:
             ocr_json = client.basicAccurate(res_pic, ocr_options)
             print(ocr_json)
             if ocr_json.get('words_result_num', None) == 1:
+                print("验证码图片链接：", img_src)
                 ocr_result = ocr_json.get('words_result')[0].get('words')
-                print('机器人检测OCR结果为', ocr_result)
+                print('自动OCR结果为', ocr_result)
             else:
-                ocr_result = input("请输入验证码：")
-                print('机器人检测OCR结果为', ocr_result)
+                print("验证码图片链接：", img_src)
+                ocr_result = input("自动OCR失败，请手动输入上述验证码：")
+                print('输入验证码为', ocr_result)
             captcha_row_url = "https://www.amazon.com/errors/validateCaptcha?"
             captcha_url = captcha_row_url + "&amzn=" + amzn_code + "&amzn-r=" + amzn_r_code + "&field-keywords=" + \
                           ocr_result
@@ -286,9 +309,7 @@ class GoodDetail:
             print("model-1")
             for each in res_html.xpath('//div[@id="detailBullets_feature_div"]/ul/li'):
                 key = each.xpath('.//span/span[1]/text()')
-                # print(key)
                 value = each.xpath('.//span/span[2]/text()')
-                # print(value)
                 if key and value:
                     key = key[0].replace("\n", '').replace("\t", '').strip(": (")
                     value = value[0].replace("\n", '').replace("\t", '').strip(": (")
@@ -300,9 +321,7 @@ class GoodDetail:
             print("model-2")
             for each in res_html.xpath("//div[@class='a-section table-padding']/table//tr"):
                 key = each.xpath("string(.//th)")
-                # print(key, "---")
                 value = each.xpath("string(.//td)")
-                #     print(key, value)
                 if key and value:
                     key = key.replace("\n", '').replace("\t", '').strip()
                     value = value.replace("\n", '').replace("\t", '').strip()
@@ -312,11 +331,8 @@ class GoodDetail:
         if res_html.xpath("//table[@id='productDetails_detailBullets_sections1']"):
             print("model-3")
             for each in res_html.xpath("//table[@id='productDetails_detailBullets_sections1']//tr"):
-                # print("model1--in")
                 key = each.xpath("string(./th)")
-                # print(key, "---")
                 value = each.xpath("string(./td)")
-                # print(key, value)
                 if key and value:
                     key = key.replace("\n", '').replace("\t", '').strip()
                     value = value.replace("\n", '').replace("\t", '').strip()
@@ -327,9 +343,7 @@ class GoodDetail:
             print("model-4")
             for each in res_html.xpath("//table[@id='productDetails_techSpec_section_1']//tr"):
                 key = each.xpath("string(.//th)")
-                # print(key, "---")
                 value = each.xpath("string(.//td)")
-                # print(key, value)
                 if key and value:
                     key = key.replace("\n", '').replace("\t", '').strip()
                     value = value.replace("\n", '').replace("\t", '').strip()
@@ -358,6 +372,12 @@ class GoodDetail:
             goods_pic_url = None
 
         asin = item.get('ASIN', None)
+        if not asin:
+            try:
+                asin_patt = re.compile("dp/([^/]*)/*")
+                asin = re.search(asin_patt, url).groups()[0]
+            except:
+                asin = 'random_' + str(random.randint(1200, 5900))
 
         try:
             sort_list.append(asin)
@@ -518,8 +538,8 @@ class GoodDetail:
             product_weight, ship_weight, goods_review_star, category_main, rank_main, high_fre_words, multi_asin,
             goods_each_ranks)
 
-        if goods_title:
-            self.detail_list.append(each_detail_list)
+        # if goods_title:
+        self.detail_list.append(each_detail_list)
 
     def run(self, data_path, start=0, end=None):
 
@@ -577,13 +597,19 @@ class GoodDetail:
                         pic_save(base_code, asin)
                     except Exception as e:
                         print("图片存储错误：", base_code_full, e)
-                if re.search('http', base_code_full):
+                if re.search('https', base_code_full):
                     try:
-                        pic_res = self.s.get(base_code_full).content
-                        if not os.path.exists("../data/pic/"):
-                            os.makedirs('../data/pic/')
-                        with open(r"../data/pic/" + str(asin) + '.jpg', 'wb') as f:
-                            f.write(pic_res)
+                        print(base_code_full)
+                        pic_res = self.s.get(base_code_full, headers=self.pic_headers)
+                        # print(pic_res.text)
+                        if pic_res.status_code == 200:
+                            pic_content = pic_res.content
+                            if not os.path.exists("../data/pic/"):
+                                os.makedirs('../data/pic/')
+                            with open(r"../data/pic/" + str(asin) + '.jpg', 'wb') as f:
+                                f.write(pic_content)
+                        else:
+                            print("图片获取结果：{}".format(pic_res.status_code))
                     except:
                         print("ASIN：{}图片保存错误".format(asin))
 
@@ -592,15 +618,19 @@ class GoodDetail:
         data_path = abs_path + "/data/goods_detail/"
         if not os.path.exists(data_path):
             os.makedirs(data_path)
-        file_name = data_path + aft + "_with_ad.xlsx"
+        if end:
+            file_name = data_path + aft + '_' + str(start) + '_' + str(end) + ".xlsx"
+        else:
+            file_name = data_path + aft + '_' + str(start) + '_all' + ".xlsx"
         try:
             details_pd['pic_url'] = abs_path + r"\data\pic\\" + details_pd['asin'] + ".jpg"
-            details_pd['pic_table_url'] = '<table> <img src=' + '\"' + details_pd['pic_url'] + '\"' + 'height="140" >'
+            details_pd['pic_table_url'] = '<table> <img src=' + '\"' + details_pd['pic_url'] + '\"' + ' height="140" >'
         except:
             pass
-        details_pd.sort_values(by=['sales_est'], inplace=True, ascending=False)
+        # details_pd.sort_values(by=['sales_est'], inplace=True, ascending=False)
 
         # details_pd.drop_duplicates(subset=['category_main', 'rank_main'], inplace=True)
+        details_pd.dropna(subset=['pic_url', 'goods_title'])
         details_pd.to_excel(file_name, encoding='utf-8')
         if self.error_set:
             print("以下链接未能正确解析，请手动查证")
@@ -679,5 +709,5 @@ def pic_save(base_code, asin):
 if __name__ == '__main__':
 
     goods_detail = GoodDetail()
-    data_path = r"E:\AmazonPycharm\keepa\data\asin_list_1_12101351_Home & Kitchen_0_5000.xlsx"
-    goods_detail.run(data_path, start=9000, end=9050)
+    data_path = r"E:\AmazonPycharm\others\data\sorted_home_10000_all.xlsx"
+    goods_detail.run(data_path, start=1350, end=1400)

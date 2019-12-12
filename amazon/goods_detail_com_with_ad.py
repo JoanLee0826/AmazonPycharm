@@ -128,6 +128,22 @@ class GoodDetail:
         "Host": "www.amazon.com",
         "Upgrade-Insecure-Requests": "1",
     }
+    ocr_headers = {
+        "Host": "www.amazon.com",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
+    }
+    pic_headers = {
+        "Host": "images-na.ssl-images-amazon.com",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8"
+    }
     s.headers.update(row_headers)
     # 在初次请求后修改请求头
     res_row = s.get(url=url_base)
@@ -161,13 +177,7 @@ class GoodDetail:
         captcha_row_url = "https://www.amazon.com/errors/validateCaptcha?"
         captcha_url = captcha_row_url + "&amzn=" + amzn_code + "&amzn-r=" + amzn_r_code + "&field-keywords=" + \
                       ocr_result
-        ocr_headers = {
-            "Host": "www.amazon.com",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Site": "same-origin",
-            "Sec-Fetch-User": "?1",
-            "Upgrade-Insecure-Requests": "1",
-        }
+
         s.get(captcha_url, headers=ocr_headers)
     print("状态cookies：", s.cookies.items())
 
@@ -797,12 +807,26 @@ def main(data_file, start=0, end=61):
     aft = datetime.datetime.now().strftime('%m%d%H%M')
 
     for base_code_full, asin in zip(details_pd['goods_pic_url'], details_pd['asin']):
-        try:
-            if base_code_full:
-                base_code = base_code_full.split(',')[1]
-                pic_save(base_code, asin)
-        except:
-            print("保存图片出错")
+        if base_code_full and asin:
+            if re.search('data:image', base_code_full):
+                try:
+                    base_code = base_code_full.split(',')[1]
+                    pic_save(base_code, asin)
+                except Exception as e:
+                    print("图片存储错误：", base_code_full, e)
+            if re.search('https', base_code_full):
+                try:
+                    pic_res = goods_detail.s.get(base_code_full, headers=goods_detail.pic_headers)
+                    if pic_res.status_code == 200:
+                        pic_content = pic_res.content
+                        if not os.path.exists("../data/pic/"):
+                            os.makedirs('../data/pic/')
+                        with open(r"../data/pic/" + str(asin) + '.jpg', 'wb') as f:
+                            f.write(pic_content)
+                    else:
+                        print("图片获取结果：{}", pic_res.status_code)
+                except:
+                    print("ASIN：{}图片保存错误".format(asin))
 
     time.sleep(3)
 

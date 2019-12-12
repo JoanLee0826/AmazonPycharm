@@ -18,14 +18,10 @@ class AmazonGoods:
         # "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36 Edge/18.17763"
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:67.0) Gecko/20100101 Firefox/67.0",
         "Host": "www.amazon.com",
-        # "Sec-Fetch-Mode": "navigate",
-        # "Sec-Fetch-Site": "same-origin",
-        # "Sec-Fetch-User": "?1",
         "Upgrade-Insecure-Requests": "1",
         # "Referer": "https://www.amazon.com"
     }
     proxies = {
-        # "http": "http://49.86.181.43:9999",
         "http": "http://114.217.241.20:8118",
     }
 
@@ -38,37 +34,29 @@ class AmazonGoods:
     title = res_row_html.xpath("//title/text()")[0]
     print(title)
     if title == 'Robot Check':
-        print(res_row.text)
         img_src = res_row_html.xpath("//div[@class='a-row a-text-center']/img/@src")[0]
-        print("验证码图片链接：", img_src)
+        res_pic = s.get(img_src).content
+        # print("验证码图片链接：", img_src)
         amzn_code = res_row_html.xpath("//input[@name='amzn']")[0].get('value')
         amzn_r_code = res_row_html.xpath("//input[@name='amzn-r']")[0].get('value')
-        ocr_result = input("输入验证码：")
-        # ocr_options = {}
-        # ocr_options["detect_direction"] = "true"
-        # ocr_options["probability"] = "true"
-        # ocr_options["language_type"] = "ENG"
-        # ocr_json = client.basicAccurate(img_src)
-        # print(ocr_json)
-        # if ocr_json.get('words_result_num', None) == 1:
-        # ocr_result = ocr_json.get('words_result')[0].get('+words')
-        print('机器人检测OCR结果为', ocr_result)
-        captcha_row_url = "https://www.amazon.com/errors/validateCaptcha?"
+        ocr_options = {}
+        ocr_options["detect_direction"] = "true"
+        ocr_options["probability"] = "true"
+        ocr_options["language_type"] = "ENG"
+        ocr_json = client.basicAccurate(res_pic, ocr_options)
+        print(ocr_json)
+        if ocr_json.get('words_result_num', None) == 1:
+            ocr_result = ocr_json.get('words_result')[0].get('words')
+            print("验证码图片链接：", img_src)
+            print('自动检测OCR结果为', ocr_result)
+        else:
+            print("---验证码图片链接---：", img_src)
+            ocr_result = input("OCR失败，请手动输入上述图片中的验证码：")
+            print('机器人检测OCR结果为', ocr_result)
+        captcha_row_url = "https://www.amazon.ca/errors/validateCaptcha?"
         captcha_url = captcha_row_url + "&amzn=" + amzn_code + "&amzn-r=" + amzn_r_code + "&field-keywords=" + \
                       ocr_result
-        print("headers:", s.headers)
-        print(captcha_url)
-        ocr_headers = {
-            # "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36 Edge/18.17763"
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:67.0) Gecko/20100101 Firefox/67.0",
-            "Host": "www.amazon.com",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Site": "same-origin",
-            "Sec-Fetch-User": "?1",
-            "Upgrade-Insecure-Requests": "1",
-            "Referer": "https://www.amazon.com"
-        }
-        s.get(captcha_url, headers=ocr_headers)
+        s.get(captcha_url)
     print("状态cookies：", s.cookies.items())
 
     def __init__(self):
