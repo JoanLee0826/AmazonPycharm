@@ -44,7 +44,7 @@ class GoodDetail:
         "Upgrade-Insecure-Requests": "1",
     }
     ocr_headers = {
-        "Host": "www.amazon.com",
+        "Host": "www.amazon.ca",
         "Sec-Fetch-Mode": "navigate",
         "Sec-Fetch-Site": "cross-site",
         "Sec-Fetch-User": "?1",
@@ -64,7 +64,7 @@ class GoodDetail:
     title = res_row_html.xpath("//title/text()")[0]
     if title == 'Robot Check':
         img_src = res_row_html.xpath("//div[@class='a-row a-text-center']/img/@src")[0]
-        res_pic = s.get(img_src).content
+        res_pic = s.get(img_src, headers=pic_headers).content
         # print("验证码图片链接：", img_src)
         amzn_code = res_row_html.xpath("//input[@name='amzn']")[0].get('value')
         amzn_r_code = res_row_html.xpath("//input[@name='amzn-r']")[0].get('value')
@@ -72,6 +72,7 @@ class GoodDetail:
         ocr_options["detect_direction"] = "true"
         ocr_options["probability"] = "true"
         ocr_options["language_type"] = "ENG"
+        print("验证码图片返回：", res_pic)
         ocr_json = client.basicAccurate(res_pic, ocr_options)
         print(ocr_json)
         if ocr_json.get('words_result_num', None) == 1:
@@ -79,6 +80,7 @@ class GoodDetail:
             print("验证码图片链接：", img_src)
             print('自动检测OCR结果为', ocr_result)
         else:
+            print(res_pic)
             print("---验证码图片链接---：", img_src)
             ocr_result = input("OCR失败，请手动输入上述图片中的验证码：")
             print('机器人检测OCR结果为', ocr_result)
@@ -113,7 +115,8 @@ class GoodDetail:
         'Sec-Fetch-Mode': 'cors',
 
     }
-    # res = s.post(change_delivery, headers=delivery_header, data=delivery_data)
+    del_res = s.post(change_delivery, headers=delivery_header, data=delivery_data)
+    print('地值更换结果：', del_res.status_code)
     print(s.headers.get('User-Agent'))
 
     def __init__(self):
@@ -163,7 +166,8 @@ class GoodDetail:
         if title == 'Robot Check':
             img_src = res_row_html.xpath("//div[@class='a-row a-text-center']/img/@src")[0]
             # print("验证码图片链接：", img_src)
-            res_pic = self.s.get(img_src).content
+            res_pic = self.s.get(img_src, headers=self.pic_headers).content
+            print("验证码图片返回：", res_pic)
             amzn_code = res_row_html.xpath("//input[@name='amzn']")[0].get('value')
             amzn_r_code = res_row_html.xpath("//input[@name='amzn-r']")[0].get('value')
             ocr_options = {}
@@ -184,7 +188,7 @@ class GoodDetail:
             captcha_row_url = "https://www.amazon.com/errors/validateCaptcha?"
             captcha_url = captcha_row_url + "&amzn=" + amzn_code + "&amzn-r=" + amzn_r_code + "&field-keywords=" + \
                           ocr_result
-            self.s.get(captcha_url)
+            self.s.get(captcha_url, headers=self.ocr_headers)
             print("状态cookies：", self.s.cookies.items())
 
         if res.status_code == 404 and re.search('Page Not Found', title):
@@ -339,6 +343,9 @@ class GoodDetail:
                     value = value.replace("\n", '').replace("\t", '').strip()
                     if key != "Customer Reviews":
                         item[key] = value
+
+
+
         if res_html.xpath("//div[@id='detailBullets_feature_div']/ul"):
             absr = res_html.xpath('string(//div[@id="dpx-amazon-sales-rank_feature_div"]/li)')
             item['Amazon Best Sellers Rank'] = absr
@@ -505,7 +512,10 @@ class GoodDetail:
         try:
             brand = res_html.xpath('//a[@id="bylineInfo"]/text()')[0]
         except:
-            brand = None
+            try:
+                brand = res_html.xpath("//a[@id='brand']/text()")[0]
+            except:
+                brand = None
 
         # 卖方
         try:
@@ -610,7 +620,10 @@ class GoodDetail:
         data_path = abs_path + "/data/goods_detail/"
         if not os.path.exists(data_path):
             os.makedirs(data_path)
-        file_name = data_path + aft + "_in_ca.xlsx"
+        if end:
+            file_name = data_path + aft + "_" + str(start) + "_" + str(end) + "_in_ca.xlsx"
+        else:
+            file_name = data_path + aft + "_" + str(start) + "all_in_ca.xlsx"
         try:
             details_pd['pic_url'] = abs_path + r"\data\pic\\" + details_pd['asin'] + ".jpg"
             details_pd['pic_table_url'] = '<table> <img src=' + '\"' + details_pd['pic_url'] + '\"' + 'height="140" >'
@@ -618,7 +631,7 @@ class GoodDetail:
         except:
             pass
         details_pd.drop_duplicates(subset=['goods_title', 'asin'], inplace=True)
-        details_pd.dropna(subset=['goods_pic_url', 'goods_title'])
+        details_pd.dropna(subset=['goods_pic_url', 'goods_title'], inplace=True)
         details_pd.to_excel(file_name, encoding='utf-8')
         if self.error_set:
             print("以下链接未能正确解析，请手动查证")
@@ -679,5 +692,5 @@ def pic_save(base_code, asin):
 if __name__ == '__main__':
 
     goods_detail = GoodDetail()
-    data_path = r"E:\AmazonPycharm\others\data\sorted_home_10000_all.xlsx"
-    goods_detail.run(data_path, start=800, end=1000)
+    data_path = r"E:\AmazonPycharm\others\data\hom类目前10000名.xlsx"
+    goods_detail.run(data_path, start=2600, end=2700)

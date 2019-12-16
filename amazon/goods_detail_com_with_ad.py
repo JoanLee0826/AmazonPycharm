@@ -267,7 +267,7 @@ class GoodDetail:
             captcha_row_url = "https://www.amazon.com/errors/validateCaptcha?"
             captcha_url = captcha_row_url + "&amzn=" + amzn_code + "&amzn-r=" + amzn_r_code + "&field-keywords=" + \
                           ocr_result
-            self.s.get(captcha_url)
+            self.s.get(captcha_url, headers=self.ocr_header)
             print("状态cookies：", self.s.cookies.items())
 
         #  如果是广告链接，且未能正确跳转 返回302的再次尝试
@@ -573,9 +573,12 @@ class GoodDetail:
         try:
             brand = res_html.xpath('//a[@id="bylineInfo"]/text()')[0]
         except:
-            brand = None
+            try:
+                brand = res_html.xpath("//a[@id='brand']/text()")[0]
+            except:
+                brand = None
         try:
-            buy_box_info =  res_html.xpath('//*[@id="turboState"]/script/text()')[0]
+            buy_box_info = res_html.xpath('//*[@id="turboState"]/script/text()')[0]
             buy_box_json = json.loads(buy_box_info)
             stockOnHand = buy_box_json['eligibility']['stockOnHand']
         except:

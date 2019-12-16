@@ -484,7 +484,10 @@ class GoodDetail:
         try:
             brand = res_html.xpath('//a[@id="bylineInfo"]/text()')[0]
         except:
-            brand = None
+            try:
+                brand = res_html.xpath("//a[@id='brand']/text()")[0]
+            except:
+                brand = None
         try:
             buy_box_info = res_html.xpath('//*[@id="turboState"]/script/text()')[0]
             buy_box_json = json.loads(buy_box_info)
@@ -709,5 +712,8 @@ def pic_save(base_code, asin):
 if __name__ == '__main__':
 
     goods_detail = GoodDetail()
-    data_path = r"E:\AmazonPycharm\others\data\sorted_home_10000_all.xlsx"
-    goods_detail.run(data_path, start=1350, end=1400)
+    data_path = r"E:\AmazonPycharm\others\data\hom类目前10000名.xlsx"
+    goods_detail.run(data_path, start=1100, end=1230)
+
+    # data_path = r'../data/goods_rank_list/Chinese Sky Lanterns_12161037_with_ad.csv'
+    # goods_detail.run(data_path)

@@ -95,12 +95,12 @@ class Review:
             print(each_review_list)
             self.review_list.append(each_review_list)
 
-    def run(self, data):
+    def run(self, data, start=10, end=60):
         goods_data = pd.read_excel(data, encoding='utf-8')
         base_url = self.row_url + "/product-reviews/"
         # goods_data.drop_duplicates(subset=['r','评价数量'],inplace=True)
         # goods_data = goods_data['classfication'] == ''
-        for each_url, each_count in zip(goods_data['ASIN'][5:51], goods_data['goods_review_count'][5:51]):
+        for each_url, each_count in zip(goods_data['asin'][start:end], goods_data['goods_review_count'][start:end]):
             if each_url and int(each_count) > 0:
                 if int(each_count) % 10 == 0:
 
@@ -154,7 +154,7 @@ class Review:
 if __name__ == '__main__':
 
     data = r"../data/category/Shoe Gaiters_1209_1027.xlsx"
-    # 获取指定Excel中 的ASIN列表的评论  可以结合 bse 榜单进行，获取类目的评论详情
-    # Excel 需要包含两列  ASIN 以及 goods_review_count
+    # 获取指定Excel中的 asin列表的评论  可以结合 bse 榜单进行，获取类目的评论详情
+    # Excel 需要包含两列  asin 以及 goods_review_count
     review = Review(domain='com')
-    review.run(data=data)
+    review.run(data=data, start=10, end=60)

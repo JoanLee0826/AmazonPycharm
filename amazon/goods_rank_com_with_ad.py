@@ -25,17 +25,60 @@ class AmazonGoods:
         "http": "http://114.217.241.20:8118",
     }
 
+    ocr_headers = {
+        "Host": "www.amazon.com",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
+    }
+    pic_headers = {
+        "Host": "images-na.ssl-images-amazon.com",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8"
+    }
+    delivery_header = {
+        'Host': 'www.amazon.com',
+        'Connection': 'keep-alive',
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        'Accept': 'text/html,*/*',
+        'Origin': 'https://www.amazon.com',
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+        'Referer': 'https://www.amazon.com/',
+        # 'Accept-Encoding': 'gzip, deflate, br',
+        'Accept-Language': 'zh-CN,zh;q=0.9',
+    }
     url_base = "https://www.amazon.com"
     s = requests.Session()
     s.headers.update(headers)
     s.get(url=url_base)
+    delivery_data = {
+        'locationType': 'LOCATION_INPUT',
+        'zipCode': '90014',
+        'storeContext': 'generic',
+        'deviceType': 'web',
+        'pageType': 'Gateway',
+        'actionSource': 'glow'
+    }
+
+    change_delivery = 'https://www.amazon.com/gp/delivery/ajax/address-change.html'
+    deliver_res = s.post(change_delivery, headers=delivery_header, data=delivery_data)
+    print("地址更换结果：", deliver_res)
+
     res_row = s.get(url=url_base)
     res_row_html = etree.HTML(res_row.text)
     title = res_row_html.xpath("//title/text()")[0]
     print(title)
     if title == 'Robot Check':
         img_src = res_row_html.xpath("//div[@class='a-row a-text-center']/img/@src")[0]
-        res_pic = s.get(img_src).content
+        res_pic = s.get(img_src, headers=pic_headers).content
         # print("验证码图片链接：", img_src)
         amzn_code = res_row_html.xpath("//input[@name='amzn']")[0].get('value')
         amzn_r_code = res_row_html.xpath("//input[@name='amzn-r']")[0].get('value')
@@ -56,7 +99,7 @@ class AmazonGoods:
         captcha_row_url = "https://www.amazon.ca/errors/validateCaptcha?"
         captcha_url = captcha_row_url + "&amzn=" + amzn_code + "&amzn-r=" + amzn_r_code + "&field-keywords=" + \
                       ocr_result
-        s.get(captcha_url)
+        s.get(captcha_url, headers=ocr_headers)
     print("状态cookies：", s.cookies.items())
 
     def __init__(self):
@@ -167,5 +210,5 @@ if __name__ == '__main__':
     """
     返回指定关键词(key_words)下的前几页(end_page)数据链接
     """
-    key_words = 'new year decorations 2020'
+    key_words = 'Chinese Sky Lanterns'
     main(key_words, end_page=2)
