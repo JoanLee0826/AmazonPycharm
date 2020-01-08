@@ -692,5 +692,6 @@ def pic_save(base_code, asin):
 if __name__ == '__main__':
 
     goods_detail = GoodDetail()
-    data_path = r"E:\AmazonPycharm\others\data\hom类目前10000名.xlsx"
-    goods_detail.run(data_path, start=2600, end=2700)
+    # data_path = r"E:\AmazonPycharm\others\data\hom类目前10000名.xlsx"
+    # goods_detail.run(data_path, start=2600, end=2700)
+

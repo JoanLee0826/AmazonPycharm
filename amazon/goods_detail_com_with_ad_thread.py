@@ -607,9 +607,9 @@ class GoodDetail:
                         # print(pic_res.text)
                         if pic_res.status_code == 200:
                             pic_content = pic_res.content
-                            if not os.path.exists("../data/pic/"):
-                                os.makedirs('../data/pic/')
-                            with open(r"../data/pic/" + str(asin) + '.jpg', 'wb') as f:
+                            if not os.path.exists("../data/pic/uo"):
+                                os.makedirs('../data/pic/uo')
+                            with open(r"../data/pic/uo" + str(asin) + '.jpg', 'wb') as f:
                                 f.write(pic_content)
                         else:
                             print("图片获取结果：{}".format(pic_res.status_code))
@@ -703,17 +703,17 @@ def pic_save(base_code, asin):
 
     import base64
     img_data = base64.b64decode(base_code)
-    if not os.path.exists("../data/pic/"):
-        os.makedirs('../data/pic/')
-    with open(r"../data/pic/" + str(asin) + '.jpg', 'wb') as f:
+    if not os.path.exists("../data/pic/uo/"):
+        os.makedirs('../data/pic/uo/')
+    with open(r"../data/pic/uo/" + str(asin) + '.jpg', 'wb') as f:
         f.write(img_data)
 
 
 if __name__ == '__main__':
 
     goods_detail = GoodDetail()
-    data_path = r"E:\AmazonPycharm\others\data\hom类目前10000名.xlsx"
-    goods_detail.run(data_path, start=1100, end=1230)
+    # data_path = r"E:\AmazonPycharm\others\data\hom类目前10000名.xlsx"
+    # goods_detail.run(data_path, start=1100, end=1230)
 
-    # data_path = r'../data/goods_rank_list/Chinese Sky Lanterns_12161037_with_ad.csv'
-    # goods_detail.run(data_path)
+    data_path = r'D:\待合并\data\合并_1225_1307.xlsx'
+    goods_detail.run(data_path, start=0, end=30)

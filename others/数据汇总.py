@@ -11,9 +11,11 @@ def in_all(data_path):
     """
     df = pd.DataFrame()
     for each in os.listdir(data_path):
+        file = data_path + "/" + each
         if each.endswith('xlsx'):
-            file = data_path + "/" + each
             df = pd.concat([df, pd.read_excel(file)], sort=False)
+        if each.endswith('csv'):
+            df = pd.concat([df, pd.read_csv(file)], sort=False)
     aft = datetime.datetime.strftime(datetime.datetime.now(), '_%m%d_%H%M')
     out_path = data_path + '/data/'
     if not os.path.exists(out_path):
@@ -26,3 +28,4 @@ def in_all(data_path):
 if __name__ == '__main__':
     data_path = r'E:\AmazonPycharm\data\临时合并'
     print(in_all(data_path))
+
